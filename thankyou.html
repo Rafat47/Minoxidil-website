@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You | Picaso</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="thankyou.css">
+</head>
+
+<body>
+    <!-- Include your header/nav here -->
+    <!-- ========== NAVBAR ========== -->
+    <header class="navbar" id="navbar">
+        <div class="container nav-inner">
+            <a href="index.html" class="brand" aria-label="Picaso home">
+                <img src="/public/icons/brand_logo.svg" alt="Picaso logo" class="brand-icon" />
+                <span class="brand-name">Picaso</span>
+            </a>
+
+            <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+                <a href="index.html" class="active">Home</a>
+                <a href="shop.html">Shop</a>
+                <a href="#contact">Contact Us</a>
+                <a href="#about">About</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button class="icon-btn" id="cartOpen" aria-label="Open cart">
+                    <img src="/public/icons/cart.svg" alt="" />
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
+                <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-expanded="false">
+                    <img src="/public/icons/menu.svg" alt="" />
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="thankyou-container">
+        <div class="thankyou-card">
+            <div class="success-icon">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+
+            <h1>Thank You for Your Order!</h1>
+            <p class="order-message">Your order has been successfully placed. We'll contact you shortly to confirm the
+                delivery details.</p>
+
+            <div class="order-id">
+                <span>Order ID:</span>
+                <strong id="orderIdDisplay">-</strong>
+            </div>
+
+            <div class="thankyou-actions">
+                <a href="shop.html" class="btn-primary">Continue Shopping</a>
+                <a href="index.html" class="btn-secondary">Back to Home</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Include your footer here -->
+    <footer>
+        <p>&copy; <span id="year"></span> Picaso. All rights reserved.</p>
+    </footer>
+
+    <!-- ========== CART DRAWER ========== -->
+    <div class="overlay" id="overlay"></div>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart" aria-hidden="true">
+        <div class="cart-head">
+            <h3>Your Cart</h3>
+            <button class="icon-btn" id="cartClose" aria-label="Close cart">
+                <img src="/public/icons/close.svg" alt="" />
+            </button>
+        </div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-foot">
+            <div class="cart-total"><span>Subtotal</span><strong id="cartTotal">৳ 0</strong></div>
+            <a href="shop.html" class="btn btn-outline full">Continue Shopping</a>
+            <button class="btn btn-gold full" id="checkoutBtn">Checkout</button>
+        </div>
+    </aside>
+
+    <script src="thankyou.js"></script>
+</body>
+
+</html>
