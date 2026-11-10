@@ -186,14 +186,14 @@ document.addEventListener("DOMContentLoaded", () => {
     /* ========== CONTACT FORM ========== */
     const form = document.getElementById("contactForm");
     const success = document.getElementById("formSuccess");
-
+    const submitBtn = form.querySelector('button[type="submit"]'); // Get the submit button
     const rules = {
         name: v => v.trim().length >= 2 || "Please enter your name.",
         phone: v => /^(?:\+?88)?01[3-9]\d{8}$/.test(v.replace(/[\s-]/g, "")) || "Enter a valid Bangladeshi phone number.",
         message: v => v.trim().length >= 5 || "Please write a short message."
     };
 
-    form.addEventListener("submit", e => {
+    form.addEventListener("submit", async (e) => { // Added 'async' here
         e.preventDefault();
         success.hidden = true;
         let valid = true;
@@ -215,9 +215,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!valid) return;
 
-        // TODO: send form data to your backend / email service here
-        form.reset();
-        success.hidden = false;
+        // --- NEW API INTEGRATION STARTS HERE ---
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Sending...";
+
+        // Prepare the data object to match your Google Sheet columns
+        const contactData = {
+            name: form.elements.name.value.trim(),
+            phone: form.elements.phone.value.trim(),
+            message: form.elements.message.value.trim(),
+            date: new Date().toLocaleString() // Adds a timestamp
+        };
+
+        try {
+            // 'Contact_Form' MUST exactly match the Tab name in your Google Sheet
+            await sendToGoogleSheet('Contact_Form', contactData);
+
+            // If successful
+            form.reset();
+            success.hidden = false;
+        } catch (error) {
+            // If it fails
+            console.error('Contact form submission failed:', error);
+            alert("Sorry, we couldn't send your message. Please try again later.");
+        } finally {
+            // Always re-enable the button when done
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+        }
+        // --- NEW API INTEGRATION ENDS HERE ---
     });
 
     /* ========== FOOTER YEAR ========== */
