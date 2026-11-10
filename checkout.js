@@ -11,11 +11,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fmt = (n) => '৳ ' + Number(n).toLocaleString('en-US');
 
-    // Validation rules
+    // ====== UPDATED VALIDATION RULES ======
     const rules = {
-        name: v => v.trim().length >= 2 || 'Please enter your full name.',
-        phone: v => /^(?:\+?88)?01[3-9]\d{8}$/.test(v.replace(/[\s-]/g, '')) || 'Enter a valid Bangladeshi phone number.',
-        address: v => v.trim().length >= 10 || 'Please enter a complete delivery address.'
+        name: v => {
+            const val = String(v).trim();
+            // Must be a string, at least 2 characters, containing only letters, spaces, dots, or hyphens
+            return (val.length >= 2 && /^[a-zA-Z\s.-]+$/.test(val))
+                ? true
+                : 'Please enter a valid name (letters only, min 2 characters).';
+        },
+        phone: v => {
+            // Strip all non-digit characters (spaces, dashes, plus signs)
+            const digits = String(v).replace(/\D/g, '');
+            // Must be more than 8 digits and less than 15 digits (i.e., 9 to 14 digits)
+            return (digits.length > 8 && digits.length < 15)
+                ? true
+                : 'Phone number must contain between 9 and 14 digits.';
+        },
+        address: v => {
+            const val = String(v).trim();
+            // Must be a string and at least 10 characters long
+            return val.length >= 10
+                ? true
+                : 'Please enter a complete delivery address (min 10 characters).';
+        }
     };
 
     function renderOrderSummary() {
@@ -29,8 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="empty-cart-message">
                 <p>Your cart is empty.</p>
                 <a href="shop.html">Continue Shopping</a>
-            </div>
-        `;
+            </div>`;
             subtotalEl.textContent = fmt(0);
             deliveryEl.textContent = fmt(0);
             totalEl.textContent = fmt(0);
@@ -39,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.getElementById('confirmOrderBtn').disabled = false;
-
         summaryEl.innerHTML = cart.map(item => `
         <div class="order-item" data-id="${item.id}">
             <img src="${item.image}" alt="${item.name}">
@@ -53,11 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="order-item-price">${fmt(item.price * item.qty)}</div>
         </div>
-    `).join('');
+        `).join('');
 
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
         const total = subtotal + DELIVERY_CHARGE;
-
         subtotalEl.textContent = fmt(subtotal);
         deliveryEl.textContent = fmt(DELIVERY_CHARGE);
         totalEl.textContent = fmt(total);
@@ -66,13 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function validateForm() {
         const form = document.getElementById('checkoutForm');
         let valid = true;
-
         Object.keys(rules).forEach(field => {
             const input = form.elements[field];
             const result = rules[field](input.value);
             const errEl = form.querySelector(`.error[data-for="${field}"]`);
             const wrap = input.closest('.form-group');
-
             if (result !== true) {
                 valid = false;
                 errEl.textContent = result;
@@ -82,41 +96,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 wrap.classList.remove('invalid');
             }
         });
-
         return valid;
     }
 
-    function confirmOrder() {
+    // ====== UPDATED CONFIRM ORDER FUNCTION ======
+    async function confirmOrder() {
         if (!validateForm()) return;
 
+        const btn = document.getElementById('confirmOrderBtn');
+        const originalBtnText = btn.textContent;
+
+        // Prevent double submission
+        btn.disabled = true;
+        btn.textContent = 'Processing Order...';
+
         const form = document.getElementById('checkoutForm');
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const totalCost = subtotal + DELIVERY_CHARGE;
+        const orderId = 'ORD-' + Date.now();
+
+        // Create a readable summary of products for easy viewing in Google Sheets
+        const productSummary = cart.map(item => `${item.name} (x${item.qty})`).join(', ');
+
         const orderData = {
+            orderId: orderId,
+            date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }),
             name: form.elements.name.value.trim(),
             phone: form.elements.phone.value.trim(),
             address: form.elements.address.value.trim(),
             note: form.elements.note.value.trim(),
-            items: cart,
-            subtotal: cart.reduce((sum, item) => sum + (item.price * item.qty), 0),
+            productSummary: productSummary, // Easy to read in Sheets
+            items: cart,                    // Apps Script will safely JSON.stringify this
+            subtotal: subtotal,
             deliveryCharge: DELIVERY_CHARGE,
-            total: cart.reduce((sum, item) => sum + (item.price * item.qty), 0) + DELIVERY_CHARGE,
-            date: new Date().toISOString(),
-            orderId: 'ORD-' + Date.now()
+            cod: totalCost                  // Total Cash on Delivery amount
         };
 
-        // Save order to localStorage (you can send to backend instead)
         try {
-            const orders = JSON.parse(localStorage.getItem('picaso_orders') || '[]');
-            orders.push(orderData);
-            localStorage.setItem('picaso_orders', JSON.stringify(orders));
-        } catch (e) {
-            console.error('Failed to save order:', e);
+            // 1. Send data to Google Sheets using the centralized api.js function
+            await sendToGoogleSheet('Checkout', orderData);
+
+            // 2. Save order to localStorage for local history
+            try {
+                const orders = JSON.parse(localStorage.getItem('picaso_orders') || '[]');
+                orders.push(orderData);
+                localStorage.setItem('picaso_orders', JSON.stringify(orders));
+            } catch (e) {
+                console.error('Failed to save order locally:', e);
+            }
+
+            // 3. Clear cart and notify other components (like the cart drawer)
+            localStorage.removeItem(CART_KEY);
+            document.dispatchEvent(new CustomEvent('picaso:cart-updated'));
+
+            // 4. Redirect to thank you page
+            window.location.href = `thankyou.html?orderId=${orderId}`;
+
+        } catch (error) {
+            console.error('Order submission failed:', error);
+            alert('Failed to place order. Please check your internet connection and try again.');
+
+            // Reset button on failure
+            btn.disabled = false;
+            btn.textContent = originalBtnText;
         }
-
-        // Clear cart
-        localStorage.removeItem(CART_KEY);
-
-        // Redirect to thank you page with order ID
-        window.location.href = `thankyou.html?orderId=${orderData.orderId}`;
     }
 
     // Event listeners
@@ -133,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('orderSummary').addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
-
         const id = btn.dataset.id;
         const action = btn.dataset.action;
         const item = cart.find(i => i.id === id);
@@ -150,9 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Notify the cart drawer (if open) to refresh
         document.dispatchEvent(new CustomEvent('picaso:cart-updated'));
-
         renderOrderSummary();
     });
-    // Event listeners
-    document.getElementById('confirmOrderBtn').addEventListener('click', confirmOrder);
 });
